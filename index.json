@@ -1,0 +1,76 @@
+{
+  "name": "Spyou's Sozo Providers",
+  "description": "Default manga + novel sources for Sozo Read.",
+  "sources": [
+    {
+      "id": "freewebnovel",
+      "name": "FreeWebNovel",
+      "version": "1.0.0",
+      "type": "novel",
+      "lang": "en",
+      "file": "freewebnovel.js",
+      "logo": "https://freewebnovel.com/files/article/image/logo.png",
+      "nsfw": false
+    },
+    {
+      "id": "mangadex",
+      "name": "MangaDex",
+      "version": "1.0.0",
+      "type": "manga",
+      "lang": "en",
+      "file": "mangadex.js",
+      "logo": "https://mangadex.org/img/brand/mangadex-logo.svg",
+      "nsfw": false
+    },
+    {
+      "id": "mangakakalot",
+      "name": "Mangakakalot",
+      "version": "1.0.0",
+      "type": "manga",
+      "lang": "en",
+      "file": "mangakakalot.js",
+      "logo": "https://mangakakalot.fun/logo.png",
+      "nsfw": false
+    },
+    {
+      "id": "mangakatana",
+      "name": "Mangakatana",
+      "version": "1.0.0",
+      "type": "manga",
+      "lang": "en",
+      "file": "mangakatana.js",
+      "logo": "https://mangakatana.com/static/img/logo.png",
+      "nsfw": false
+    },
+    {
+      "id": "mangapill",
+      "name": "Mangapill",
+      "version": "1.0.0",
+      "type": "manga",
+      "lang": "en",
+      "file": "mangapill.js",
+      "logo": "https://mangapill.com/static/favicon.ico",
+      "nsfw": false
+    },
+    {
+      "id": "novelbin",
+      "name": "NovelBin",
+      "version": "1.0.0",
+      "type": "novel",
+      "lang": "en",
+      "file": "novelbin.js",
+      "logo": "https://novelbin.com/img/logo.png",
+      "nsfw": false
+    },
+    {
+      "id": "weebcentral",
+      "name": "WeebCentral",
+      "version": "1.0.0",
+      "type": "manga",
+      "lang": "en",
+      "file": "weebcentral.js",
+      "logo": "https://weebcentral.com/static/images/brand.png",
+      "nsfw": false
+    }
+  ]
+}
