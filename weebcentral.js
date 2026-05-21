@@ -13,7 +13,7 @@ function getInfo() {
     baseUrl: SITE,
     logo: SITE + '/static/images/brand.png',
     type: 'manga',
-    version: '1.0.1'
+    version: '1.0.2'
   };
 }
 
@@ -195,7 +195,7 @@ function _fetchChapters(url) {
 
 function _parseChaptersStrict(html) {
   var out = [];
-  var re = /<a[^>]+href="(https:\/\/weebcentral\.com\/chapters\/[^"]+)"[\s\S]*?<span[^>]*>([^<]+Chapter[^<]*|[^<]+Episode[^<]*|[^<]+)<\/span>[\s\S]*?(?:<time[^>]+datetime="([^"]+)")?/g;
+  var re = /<a[^>]+href="(https:\/\/weebcentral\.com\/chapters\/[^"]+)"[\s\S]*?<span[^>]*>([^<]+Chapter[^<]*|[^<]+Episode[^<]*|[^<]+Page[^<]*|[^<]+)<\/span>[\s\S]*?(?:<time[^>]+datetime="([^"]+)")?/g;
   var matches = _allMatches(html, re);
   var seen = {};
   for (var i = 0; i < matches.length; i++) {
@@ -203,10 +203,13 @@ function _parseChaptersStrict(html) {
     if (seen[link]) continue;
     seen[link] = true;
     var rawTitle = _cleanText(matches[i][2]);
-    // The first span we hit might be "Last Read" or a label — skip if
-    // it doesn't look chapter-ish (chapter/vol/episode/ep/ch keywords
-    // or a leading digit).
-    if (!/chapter|vol|episode|^ep\b|^ch\b/i.test(rawTitle) && !/^\d/.test(rawTitle)) continue;
+    // Filter out spans we hit that aren't chapter labels (icons,
+    // "Last Read" pill, etc). Accept anything that has a chapter-y
+    // keyword OR any digit anywhere in the title — covers
+    // "Chapter 12", "Episode 5", "Page 392" (Shonen Jump weekly),
+    // "Ch. 12.5", "Vol. 1", "100.5", and bare numeric titles.
+    if (!/chapter|vol|episode|page|\bep\b|\bch\b/i.test(rawTitle) &&
+        !/\d/.test(rawTitle)) continue;
     var date = matches[i][3] ? matches[i][3].substring(0, 10) : '';
     var numMatch = rawTitle.match(/([0-9]+(?:\.[0-9]+)?)/);
     var num = numMatch ? parseFloat(numMatch[1]) : null;
@@ -234,28 +237,48 @@ function _parseChaptersLoose(html) {
     seen[link] = true;
     var inner = matches[i][2] || '';
     var tail = matches[i][3] || '';
-    // Strip every HTML tag inside the <a> to get pure text — title
-    // text might be wrapped in <span>, <div>, or directly inside <a>.
-    var innerText = _cleanText(inner.replace(/<[^>]+>/g, ' '));
-    if (!innerText) continue;
 
-    // Pull a chapter number. Prefer keyword-anchored matches
-    // ("Chapter 42", "Episode 7", "Ch. 12.5") over bare numbers.
+    // Prefer a <span> that explicitly contains a chapter label keyword
+    // — gives us a clean "Page 392" / "Chapter 5" / "Episode 7" string
+    // without the SVG noise + timestamps we'd get if we stripped the
+    // whole inner. Falls back to a digit-prefixed span, then to the
+    // tag-stripped inner text as a last resort.
+    var title = '';
+    var labelMatch =
+        inner.match(/<span[^>]*>([^<]*(?:Chapter|Episode|Page|Vol)[^<]*)<\/span>/i) ||
+        inner.match(/<span[^>]*>(\s*Ch\.\s*[^<]+)<\/span>/i) ||
+        inner.match(/<span[^>]*>(\s*[0-9][^<]{0,40})<\/span>/);
+    if (labelMatch) {
+      title = _cleanText(labelMatch[1]);
+    } else {
+      // Strip every HTML tag then cut at common noise tokens (CSS
+      // inline blocks, ISO timestamps, "Last Read" labels).
+      var pure = _cleanText(inner.replace(/<[^>]+>/g, ' '));
+      var stopAt = pure.search(/(Last Read|\.st0|\d{4}-\d{2}-\d{2}T)/);
+      title = stopAt > 0 ? _cleanText(pure.slice(0, stopAt)) : pure.slice(0, 60);
+    }
+    if (!title) continue;
+
+    // Pull a chapter number. Prefer keyword-anchored matches over bare
+    // numbers (so timestamps embedded in fallback text don't win).
     var num = null;
-    var nm = innerText.match(/(?:Chapter|Episode|Ch\.|Ep\.|Vol\.)\s*([0-9]+(?:\.[0-9]+)?)/i);
+    var nm = title.match(/(?:Chapter|Episode|Page|Ch\.|Ep\.|Vol\.)\s*([0-9]+(?:\.[0-9]+)?)/i);
     if (nm) {
       num = parseFloat(nm[1]);
     } else {
-      var bare = innerText.match(/([0-9]+(?:\.[0-9]+)?)/);
+      var bare = title.match(/([0-9]+(?:\.[0-9]+)?)/);
       if (bare) num = parseFloat(bare[1]);
     }
 
-    var dateMatch = tail.match(/<time[^>]+datetime="([^"]+)"/);
+    // <time> can sit INSIDE the chapter <a> (Black Clover layout) or
+    // immediately after it (older ongoing-manga layout). Check both.
+    var dateMatch = inner.match(/<time[^>]+datetime="([^"]+)"/) ||
+                    tail.match(/<time[^>]+datetime="([^"]+)"/);
     var date = dateMatch ? dateMatch[1].substring(0, 10) : '';
 
     out.push({
       id: _idFromChapterUrl(link),
-      title: innerText,
+      title: title,
       number: isNaN(num) ? null : num,
       url: link,
       date: date
