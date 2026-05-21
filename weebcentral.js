@@ -13,7 +13,7 @@ function getInfo() {
     baseUrl: SITE,
     logo: SITE + '/static/images/brand.png',
     type: 'manga',
-    version: '1.0.0'
+    version: '1.0.1'
   };
 }
 
@@ -178,31 +178,90 @@ function getDetail(url) {
 function _fetchChapters(url) {
   return fetch(url).then(function(r) {
     var html = r.body || '';
-    var out = [];
-    // Pull every chapter link + its <time datetime="..."> (if present).
-    var re = /<a[^>]+href="(https:\/\/weebcentral\.com\/chapters\/[^"]+)"[\s\S]*?<span[^>]*>([^<]+Chapter[^<]*|[^<]+)<\/span>[\s\S]*?(?:<time[^>]+datetime="([^"]+)")?/g;
-    var matches = _allMatches(html, re);
-    var seen = {};
-    for (var i = 0; i < matches.length; i++) {
-      var link = matches[i][1];
-      if (seen[link]) continue;
-      seen[link] = true;
-      var rawTitle = _cleanText(matches[i][2]);
-      // The first span we hit might be "Last Read" or a label — skip if not a chapter-ish string.
-      if (!/chapter|vol/i.test(rawTitle) && !/^\d/.test(rawTitle)) continue;
-      var date = matches[i][3] ? matches[i][3].substring(0, 10) : '';
-      var numMatch = rawTitle.match(/([0-9]+(?:\.[0-9]+)?)/);
-      var num = numMatch ? parseFloat(numMatch[1]) : null;
-      out.push({
-        id: _idFromChapterUrl(link),
-        title: rawTitle,
-        number: isNaN(num) ? null : num,
-        url: link,
-        date: date
-      });
+    // Primary parser: the common ongoing-manga structure with an inner
+    // <span>Chapter X</span> next to a <time datetime>.
+    var out = _parseChaptersStrict(html);
+    if (out.length > 0) {
+      console.log('weebcentral _fetchChapters: ' + out.length + ' (strict)');
+      return out;
     }
+    // Fallback: completed series + manhwa render differently. Walk the
+    // chapter <a> tags directly and pull title/number from inner text.
+    out = _parseChaptersLoose(html);
+    console.log('weebcentral _fetchChapters: ' + out.length + ' (loose fallback, bodyLen ' + html.length + ')');
     return out;
   });
+}
+
+function _parseChaptersStrict(html) {
+  var out = [];
+  var re = /<a[^>]+href="(https:\/\/weebcentral\.com\/chapters\/[^"]+)"[\s\S]*?<span[^>]*>([^<]+Chapter[^<]*|[^<]+Episode[^<]*|[^<]+)<\/span>[\s\S]*?(?:<time[^>]+datetime="([^"]+)")?/g;
+  var matches = _allMatches(html, re);
+  var seen = {};
+  for (var i = 0; i < matches.length; i++) {
+    var link = matches[i][1];
+    if (seen[link]) continue;
+    seen[link] = true;
+    var rawTitle = _cleanText(matches[i][2]);
+    // The first span we hit might be "Last Read" or a label — skip if
+    // it doesn't look chapter-ish (chapter/vol/episode/ep/ch keywords
+    // or a leading digit).
+    if (!/chapter|vol|episode|^ep\b|^ch\b/i.test(rawTitle) && !/^\d/.test(rawTitle)) continue;
+    var date = matches[i][3] ? matches[i][3].substring(0, 10) : '';
+    var numMatch = rawTitle.match(/([0-9]+(?:\.[0-9]+)?)/);
+    var num = numMatch ? parseFloat(numMatch[1]) : null;
+    out.push({
+      id: _idFromChapterUrl(link),
+      title: rawTitle,
+      number: isNaN(num) ? null : num,
+      url: link,
+      date: date
+    });
+  }
+  return out;
+}
+
+function _parseChaptersLoose(html) {
+  // For each chapter <a>, capture the inner HTML + a slice of the
+  // following ~400 chars (where the date `<time>` typically sits).
+  var aRe = /<a[^>]+href="(https:\/\/weebcentral\.com\/chapters\/[^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]{0,400})/g;
+  var out = [];
+  var seen = {};
+  var matches = _allMatches(html, aRe);
+  for (var i = 0; i < matches.length; i++) {
+    var link = matches[i][1];
+    if (seen[link]) continue;
+    seen[link] = true;
+    var inner = matches[i][2] || '';
+    var tail = matches[i][3] || '';
+    // Strip every HTML tag inside the <a> to get pure text — title
+    // text might be wrapped in <span>, <div>, or directly inside <a>.
+    var innerText = _cleanText(inner.replace(/<[^>]+>/g, ' '));
+    if (!innerText) continue;
+
+    // Pull a chapter number. Prefer keyword-anchored matches
+    // ("Chapter 42", "Episode 7", "Ch. 12.5") over bare numbers.
+    var num = null;
+    var nm = innerText.match(/(?:Chapter|Episode|Ch\.|Ep\.|Vol\.)\s*([0-9]+(?:\.[0-9]+)?)/i);
+    if (nm) {
+      num = parseFloat(nm[1]);
+    } else {
+      var bare = innerText.match(/([0-9]+(?:\.[0-9]+)?)/);
+      if (bare) num = parseFloat(bare[1]);
+    }
+
+    var dateMatch = tail.match(/<time[^>]+datetime="([^"]+)"/);
+    var date = dateMatch ? dateMatch[1].substring(0, 10) : '';
+
+    out.push({
+      id: _idFromChapterUrl(link),
+      title: innerText,
+      number: isNaN(num) ? null : num,
+      url: link,
+      date: date
+    });
+  }
+  return out;
 }
 
 function getChapters(url) {
