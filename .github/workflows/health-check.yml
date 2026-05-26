@@ -1,0 +1,50 @@
+name: health-check
+
+# Runs the provider health check + commits an updated status.json
+# whenever the file actually changes. Manual dispatch is supported so
+# the workflow can be exercised before letting the cron take over.
+
+on:
+  schedule:
+    # Every 6 hours. Catches outage windows in both US and Asia tz.
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: health-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run health check
+        run: node scripts/check-providers.mjs
+
+      - name: Commit status.json
+        run: |
+          # status.json updates every run (generatedAt + lastCheckedAt
+          # always move) — that's a feature, the app can tell when a
+          # status was last verified and warn on staleness.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add status.json
+          if git diff --staged --quiet; then
+            echo "no diff (would be empty commit) — skipping"
+            exit 0
+          fi
+          git commit -m "chore: health check $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
