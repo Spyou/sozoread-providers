@@ -13,16 +13,6 @@
       "nsfw": false
     },
     {
-      "id": "mangadex",
-      "name": "MangaDex",
-      "version": "1.0.0",
-      "type": "manga",
-      "lang": "en",
-      "file": "mangadex.js",
-      "logo": "https://mangadex.org/img/brand/mangadex-logo.svg",
-      "nsfw": false
-    },
-    {
       "id": "mangakakalot",
       "name": "Mangakakalot",
       "version": "1.0.0",
