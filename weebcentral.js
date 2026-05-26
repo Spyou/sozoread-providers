@@ -13,7 +13,7 @@ function getInfo() {
     baseUrl: SITE,
     logo: SITE + '/static/images/brand.png',
     type: 'manga',
-    version: '1.0.2'
+    version: '1.0.3'
   };
 }
 
