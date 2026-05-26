@@ -35,6 +35,10 @@ jobs:
         run: node scripts/check-providers.mjs
 
       - name: Commit status.json
+        # Run even when the check script exits non-zero (e.g. version
+        # mismatch). status.json is still written and we want fresh
+        # health data in the repo even when something else is wrong.
+        if: always()
         run: |
           # status.json updates every run (generatedAt + lastCheckedAt
           # always move) — that's a feature, the app can tell when a

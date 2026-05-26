@@ -172,6 +172,28 @@ async function checkSource(meta) {
     };
   }
 
+  // Stage 0: getInfo(). Cheap synchronous call; we want the
+  // self-reported version so the main loop can flag manifest/JS
+  // drift (e.g. index.json says v1.0.3 but getInfo() says v1.0.2,
+  // which is what bit weebcentral after a partial version bump).
+  let reportedVersion = null;
+  try {
+    const json = await withTimeout(
+      globalThis.__callProvider(meta.id, 'getInfo', '[]'),
+      TIMEOUT_MS,
+      'getInfo',
+    );
+    const info = JSON.parse(json);
+    if (info && typeof info.version === 'string') {
+      reportedVersion = info.version;
+    }
+  } catch (e) {
+    // Soft-fail: a busted getInfo() shouldn't take the whole check
+    // down. We still try search/getDetail below; the absence of
+    // reportedVersion will be reported as `version: 'unknown'`.
+    console.log(`  [warn] getInfo() failed: ${e?.message || e}`);
+  }
+
   // Stage 1: search('', page=1). Empty query is the cheapest call every
   // provider implements; most sources return the catalog landing page.
   const searchStart = Date.now();
@@ -190,6 +212,7 @@ async function checkSource(meta) {
       latencyMs: Date.now() - searchStart,
       error: `search: ${cls.detail}`,
       checkedAt: startedAt,
+      reportedVersion,
     };
   }
   const searchMs = Date.now() - searchStart;
@@ -200,6 +223,7 @@ async function checkSource(meta) {
       latencyMs: searchMs,
       error: 'search returned no results',
       checkedAt: startedAt,
+      reportedVersion,
     };
   }
 
@@ -210,6 +234,7 @@ async function checkSource(meta) {
       latencyMs: searchMs,
       error: 'search result missing url',
       checkedAt: startedAt,
+      reportedVersion,
     };
   }
 
@@ -229,6 +254,7 @@ async function checkSource(meta) {
         latencyMs: searchMs + (Date.now() - detailStart),
         error: 'detail missing title',
         checkedAt: startedAt,
+        reportedVersion,
       };
     }
   } catch (e) {
@@ -238,11 +264,18 @@ async function checkSource(meta) {
       latencyMs: searchMs + (Date.now() - detailStart),
       error: `detail: ${cls.detail}`,
       checkedAt: startedAt,
+      reportedVersion,
     };
   }
   const totalMs = searchMs + (Date.now() - detailStart);
   const status = totalMs > SLOW_THRESHOLD_MS ? 'slow' : 'ok';
-  return { status, latencyMs: totalMs, error: null, checkedAt: startedAt };
+  return {
+    status,
+    latencyMs: totalMs,
+    error: null,
+    checkedAt: startedAt,
+    reportedVersion,
+  };
 }
 
 async function main() {
@@ -266,21 +299,45 @@ async function main() {
   eval(bootstrap);
 
   const sources = {};
+  const versionMismatches = [];
   for (const meta of index.sources) {
     console.log(`\n=== ${meta.id} (${meta.type}) ===`);
     const r = await checkSource(meta);
     const priorEntry = prior[meta.id] || {};
     const isOk = r.status === 'ok' || r.status === 'slow';
+
+    const manifestVersion = typeof meta.version === 'string' ? meta.version : null;
+    const reportedVersion = r.reportedVersion ?? null;
+    const versionMismatch = manifestVersion &&
+      reportedVersion &&
+      manifestVersion !== reportedVersion;
+    if (versionMismatch) {
+      versionMismatches.push({
+        id: meta.id,
+        manifest: manifestVersion,
+        reported: reportedVersion,
+      });
+    }
+
     sources[meta.id] = {
       status: r.status,
       latencyMs: r.latencyMs,
       lastOkAt: isOk ? r.checkedAt : (priorEntry.lastOkAt ?? null),
       lastCheckedAt: r.checkedAt,
       consecutiveFailures: isOk ? 0 : (priorEntry.consecutiveFailures ?? 0) + 1,
+      manifestVersion,
+      reportedVersion,
+      ...(versionMismatch ? { versionMismatch: true } : {}),
       ...(r.error ? { error: r.error } : {}),
     };
     const label = r.status + (r.latencyMs != null ? ` (${r.latencyMs}ms)` : '');
     console.log(`  -> ${label}${r.error ? `  ${r.error}` : ''}`);
+    if (manifestVersion || reportedVersion) {
+      console.log(
+        `  version: manifest=${manifestVersion ?? '?'} reported=${reportedVersion ?? '?'}` +
+          (versionMismatch ? '  *** MISMATCH ***' : ''),
+      );
+    }
   }
 
   const out = {
@@ -295,6 +352,26 @@ async function main() {
     s => !/^(ok|slow)$/.test(s.status),
   ).length;
   console.log(`\n--- ${total - broken}/${total} healthy. status.json written. ---`);
+
+  if (versionMismatches.length > 0) {
+    console.log('\nVersion mismatches:');
+    for (const m of versionMismatches) {
+      // GitHub Actions surfaces ::error:: lines as red annotations on
+      // the run UI, which makes the mismatch visible without having
+      // to dig through logs.
+      const line =
+        `${m.id}: index.json says v${m.manifest} but getInfo() returns v${m.reported}`;
+      if (process.env.GITHUB_ACTIONS) {
+        console.log(`::error::${line}`);
+      } else {
+        console.log(`  - ${line}`);
+      }
+    }
+    // Mark the run as failed, but DON'T process.exit() here — let main()
+    // finish so the workflow's commit step (gated by if: always()) still
+    // pushes the freshest status.json.
+    process.exitCode = 1;
+  }
 }
 
 main().catch((e) => {
