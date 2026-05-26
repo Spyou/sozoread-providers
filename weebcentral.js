@@ -133,6 +133,31 @@ function _parseLinkValues(chunk) {
   return out;
 }
 
+// Pulls the list of "Associated Name(s)" from a series detail page.
+// WeebCentral renders these as:
+//   <li><strong>Associated Name(s)</strong>
+//     <ul class="list-disc list-inside">
+//       <li>name 1</li>
+//       <li>name 2</li>
+//     </ul>
+//   </li>
+// Returns an empty array when the series has none.
+function _parseAssociatedNames(html) {
+  var blockM = html.match(
+    /<strong>\s*Associated Name\(s\)\s*<\/strong>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i
+  );
+  if (!blockM) return [];
+  var inner = blockM[1];
+  var out = [];
+  var re = /<li[^>]*>([\s\S]*?)<\/li>/g;
+  var m;
+  while ((m = re.exec(inner)) !== null) {
+    var v = _cleanText(m[1]);
+    if (v && out.indexOf(v) === -1) out.push(v);
+  }
+  return out;
+}
+
 function getDetail(url) {
   console.log('weebcentral detail url: ' + url);
   return fetch(url).then(function(r) {
@@ -150,6 +175,12 @@ function getDetail(url) {
     var status = _normalizeStatus(_cleanText(_parseSidebarField(html, 'Status')));
     var authors = _parseLinkValues(_parseSidebarField(html, 'Author\\(s\\)'));
     if (authors.length === 0) authors = _parseLinkValues(_parseSidebarField(html, 'Author'));
+    // Pick the first alternative name (usually the literal / Romaji
+    // translation of the title) as englishTitle. The app's title-
+    // display mode setting surfaces this when the user picks
+    // "English" or "Both". Null when the series has no alt-names.
+    var altNames = _parseAssociatedNames(html);
+    var englishTitle = altNames.length > 0 ? altNames[0] : null;
     // Tags label on the site is literally "Tags(s):" — match that form.
     var genres = _parseLinkValues(_parseSidebarField(html, 'Tags?\\(s\\)'));
     if (genres.length === 0) genres = _parseLinkValues(_parseSidebarField(html, 'Tags?'));
@@ -162,6 +193,7 @@ function getDetail(url) {
       return {
         id: id,
         title: title,
+        englishTitle: englishTitle,
         cover: cover,
         url: url,
         description: description,
