@@ -1,57 +1,57 @@
 {
-  "generatedAt": "2026-05-27T09:51:46.886Z",
+  "generatedAt": "2026-05-27T15:43:22.355Z",
   "runner": "github-actions",
   "sources": {
     "freewebnovel": {
       "status": "ok",
-      "latencyMs": 1874,
-      "lastOkAt": "2026-05-27T09:51:35.929Z",
-      "lastCheckedAt": "2026-05-27T09:51:35.929Z",
+      "latencyMs": 2141,
+      "lastOkAt": "2026-05-27T15:43:07.945Z",
+      "lastCheckedAt": "2026-05-27T15:43:07.945Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "mangakakalot": {
       "status": "ok",
-      "latencyMs": 1874,
-      "lastOkAt": "2026-05-27T09:51:37.804Z",
-      "lastCheckedAt": "2026-05-27T09:51:37.804Z",
+      "latencyMs": 1507,
+      "lastOkAt": "2026-05-27T15:43:10.086Z",
+      "lastCheckedAt": "2026-05-27T15:43:10.086Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "mangakatana": {
       "status": "ok",
-      "latencyMs": 1415,
-      "lastOkAt": "2026-05-27T09:51:39.679Z",
-      "lastCheckedAt": "2026-05-27T09:51:39.679Z",
+      "latencyMs": 1368,
+      "lastOkAt": "2026-05-27T15:43:11.594Z",
+      "lastCheckedAt": "2026-05-27T15:43:11.594Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "mangapill": {
       "status": "ok",
-      "latencyMs": 901,
-      "lastOkAt": "2026-05-27T09:51:41.094Z",
-      "lastCheckedAt": "2026-05-27T09:51:41.094Z",
+      "latencyMs": 1348,
+      "lastOkAt": "2026-05-27T15:43:12.962Z",
+      "lastCheckedAt": "2026-05-27T15:43:12.962Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "novelbin": {
       "status": "ok",
-      "latencyMs": 2759,
-      "lastOkAt": "2026-05-27T09:51:41.995Z",
-      "lastCheckedAt": "2026-05-27T09:51:41.995Z",
+      "latencyMs": 3097,
+      "lastOkAt": "2026-05-27T15:43:14.311Z",
+      "lastCheckedAt": "2026-05-27T15:43:14.311Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "weebcentral": {
-      "status": "ok",
-      "latencyMs": 2130,
-      "lastOkAt": "2026-05-27T09:51:44.756Z",
-      "lastCheckedAt": "2026-05-27T09:51:44.756Z",
+      "status": "slow",
+      "latencyMs": 4946,
+      "lastOkAt": "2026-05-27T15:43:17.409Z",
+      "lastCheckedAt": "2026-05-27T15:43:17.409Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.3",
       "reportedVersion": "1.0.3"
