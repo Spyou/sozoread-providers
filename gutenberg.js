@@ -34,7 +34,7 @@ function getInfo() {
     baseUrl: SITE,
     logo: GUTENBERG_LOGO,
     type: 'novel',
-    version: '1.0.0',
+    version: '1.0.1',
   };
 }
 
@@ -218,25 +218,26 @@ async function getChapterContent(chapterUrl) {
   }
   var slices = _splitHtml(res.body);
   if (slices.length < MIN_SPLIT_CHAPTERS) {
+    // Single-chapter fallback. The app's NovelContent model expects
+    // `text`, not `html` (the provider template uses `html` which is a
+    // documentation drift) — return the field the model actually
+    // deserializes.
     return {
       title: 'Full text',
-      html: _stripFront(res.body),
+      text: _stripBoilerplate(res.body),
       nextUrl: '',
-      prevUrl: '',
     };
   }
   var idx = parts.index;
   if (idx < 0) idx = 0;
   if (idx >= slices.length) idx = slices.length - 1;
-  var prevUrl = idx > 0 ? parts.htmlUrl + '#' + (idx - 1) : '';
   var nextUrl = idx < slices.length - 1
     ? parts.htmlUrl + '#' + (idx + 1)
     : '';
   return {
     title: slices[idx].title,
-    html: slices[idx].html,
+    text: slices[idx].html,
     nextUrl: nextUrl,
-    prevUrl: prevUrl,
   };
 }
 
@@ -319,13 +320,15 @@ async function _buildChapters(htmlUrl) {
  */
 function _splitHtml(html) {
   if (!html) return [];
-  var bodyMatch = /<body[^>]*>/i.exec(html);
-  if (bodyMatch) {
-    html = html.substring(bodyMatch.index + bodyMatch[0].length);
-  }
-  var footerRe = /\*\*\*\s*END OF (THE |THIS )?PROJECT GUTENBERG/i;
-  var footerMatch = footerRe.exec(html);
-  if (footerMatch) html = html.substring(0, footerMatch.index);
+  html = _stripBoilerplate(html);
+
+  // Preferred path: many Gutenberg books wrap real chapters in
+  // <div class="chapter">...</div> containers, which excludes
+  // title-page headings, the Table of Contents, "by Author", etc.
+  // When present this is much more reliable than guessing from
+  // heading frequency.
+  var divChapters = _splitByChapterDiv(html);
+  if (divChapters.length >= MIN_SPLIT_CHAPTERS) return divChapters;
 
   var headingRe = /<h([1-3])[^>]*>([\s\S]*?)<\/h\1>/gi;
   var headings = [];
@@ -334,7 +337,12 @@ function _splitHtml(html) {
     headings.push({
       start: m.index,
       level: parseInt(m[1], 10),
-      title: htmlText(m[2]).trim(),
+      // Collapse the chapter title to one line. Gutenberg books often
+      // split chapter titles across <br> tags ("CHAPTER I.<br>Down
+      // the Rabbit-Hole"), which leaves a newline + indentation
+      // mid-string after html stripping. Single-space-collapsing
+      // makes that read like a sentence.
+      title: htmlText(m[2]).replace(/\s+/g, ' ').trim(),
     });
   }
   if (headings.length === 0) return [];
@@ -368,12 +376,81 @@ function _splitHtml(html) {
   return slices;
 }
 
-function _stripFront(html) {
+/**
+ * Find `<div class="chapter">...</div>` blocks in modern Gutenberg
+ * HTML. Each block is one real chapter; the first heading inside is
+ * the title.
+ *
+ * Returns [] if there are zero (or one — not enough to be a real
+ * chapterised book) chapter divs; the caller falls back to
+ * heading-frequency parsing in that case.
+ *
+ * Implementation note: matches the OPEN tag, then walks forward
+ * counting nested <div>s to find the matching close. Naive regex
+ * `<div ... class="chapter">...</div>` would stop at the first
+ * inner `</div>`, which is wrong because Gutenberg chapter divs
+ * contain inner divs (illustrations, blockquotes wrapped as div).
+ */
+function _splitByChapterDiv(html) {
+  var chunks = [];
+  var openRe = /<div[^>]*\bclass="chapter"[^>]*>/gi;
+  var m;
+  while ((m = openRe.exec(html)) !== null) {
+    var startIdx = m.index;
+    var bodyStart = m.index + m[0].length;
+    // Walk forward counting <div> nesting to find the matching close.
+    var depth = 1;
+    var i = bodyStart;
+    var divTagRe = /<\/?div[\s>]/gi;
+    divTagRe.lastIndex = i;
+    var t;
+    while ((t = divTagRe.exec(html)) !== null) {
+      if (t[0][1] === '/') depth -= 1;
+      else depth += 1;
+      if (depth === 0) {
+        i = t.index + t[0].length;
+        break;
+      }
+    }
+    var endIdx = i;
+    var blockHtml = html.substring(startIdx, endIdx);
+    var titleMatch = /<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i.exec(blockHtml);
+    var title = titleMatch
+      ? htmlText(titleMatch[1]).replace(/\s+/g, ' ').trim()
+      : '';
+    chunks.push({
+      title: title || ('Chapter ' + (chunks.length + 1)),
+      html: blockHtml,
+    });
+  }
+  return chunks;
+}
+
+/**
+ * Strip Gutenberg's title-page + license boilerplate so chapter
+ * detection and the single-chapter fallback don't pick up the eBook
+ * frontmatter, the Table of Contents heading, or the license text.
+ *
+ * Modern Gutenberg HTML wraps these in dedicated <section> blocks
+ * (`id="pg-header"` and `id="pg-footer"`). Older HTML uses an
+ * `*** END OF THE PROJECT GUTENBERG ***` text marker. We handle both.
+ */
+function _stripBoilerplate(html) {
   if (!html) return '';
   var bodyMatch = /<body[^>]*>/i.exec(html);
   if (bodyMatch) {
     html = html.substring(bodyMatch.index + bodyMatch[0].length);
   }
+  // Modern Gutenberg: explicit boilerplate sections.
+  html = html.replace(
+    /<section[^>]*id="pg-header"[^>]*>[\s\S]*?<\/section>/i,
+    '',
+  );
+  html = html.replace(
+    /<section[^>]*id="pg-footer"[^>]*>[\s\S]*$/i,
+    '',
+  );
+  // Legacy Gutenberg: plain-text end marker.
   var footerRe = /\*\*\*\s*END OF (THE |THIS )?PROJECT GUTENBERG/i;
   var footerMatch = footerRe.exec(html);
   if (footerMatch) html = html.substring(0, footerMatch.index);
