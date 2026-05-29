@@ -61,6 +61,16 @@
       "file": "weebcentral.js",
       "logo": "https://weebcentral.com/static/images/brand.png",
       "nsfw": false
+    },
+    {
+      "id": "gutenberg",
+      "name": "Project Gutenberg",
+      "version": "1.0.0",
+      "type": "novel",
+      "lang": "multi",
+      "file": "gutenberg.js",
+      "logo": "https://www.gutenberg.org/gutenberg/pg-logo-129x80.png",
+      "nsfw": false
     }
   ]
 }
