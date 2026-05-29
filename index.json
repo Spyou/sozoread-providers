@@ -65,7 +65,7 @@
     {
       "id": "gutenberg",
       "name": "Project Gutenberg",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "type": "novel",
       "lang": "multi",
       "file": "gutenberg.js",

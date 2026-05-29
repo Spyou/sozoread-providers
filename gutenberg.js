@@ -34,7 +34,7 @@ function getInfo() {
     baseUrl: SITE,
     logo: GUTENBERG_LOGO,
     type: 'novel',
-    version: '1.0.1',
+    version: '1.0.2',
   };
 }
 
@@ -218,13 +218,13 @@ async function getChapterContent(chapterUrl) {
   }
   var slices = _splitHtml(res.body);
   if (slices.length < MIN_SPLIT_CHAPTERS) {
-    // Single-chapter fallback. The app's NovelContent model expects
-    // `text`, not `html` (the provider template uses `html` which is a
-    // documentation drift) — return the field the model actually
-    // deserializes.
+    // Single-chapter fallback. NovelContent.text is plain text, not
+    // HTML — the reader renders it verbatim, so we flatten the HTML
+    // into paragraph-joined text the same way NovelBin / FreeWebNovel
+    // do.
     return {
       title: 'Full text',
-      text: _stripBoilerplate(res.body),
+      text: _toText(_stripBoilerplate(res.body)),
       nextUrl: '',
     };
   }
@@ -236,7 +236,7 @@ async function getChapterContent(chapterUrl) {
     : '';
   return {
     title: slices[idx].title,
-    text: slices[idx].html,
+    text: _toText(slices[idx].html),
     nextUrl: nextUrl,
   };
 }
@@ -374,6 +374,50 @@ function _splitHtml(html) {
     });
   }
   return slices;
+}
+
+/**
+ * Convert a chapter's HTML into reader-ready plain text.
+ *
+ * NovelContent.text is rendered verbatim by the novel reader — no HTML
+ * parsing on the app side — so this method does the flattening:
+ *
+ *   1. drop <script>/<style> blocks (Gutenberg HTML has style blocks
+ *      embedded in <head>; chapter slices shouldn't, but be defensive)
+ *   2. swap <br> for a real newline so poetry-style line breaks survive
+ *   3. walk block-level elements (p / h1-h6 / blockquote / li) in order
+ *      and use htmlText() to strip remaining tags + decode entities
+ *   4. normalize horizontal whitespace per line, preserve newlines,
+ *      cap consecutive blank lines at one
+ *   5. join paragraphs with a blank line so the reader's auto-paragraph
+ *      spacing kicks in
+ *
+ * Falls back to a flat tag-strip when no block elements are present.
+ */
+function _toText(htmlSlice) {
+  if (!htmlSlice) return '';
+  var s = String(htmlSlice)
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '');
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  var blockRe = /<(p|h[1-6]|blockquote|li)[^>]*>([\s\S]*?)<\/\1>/gi;
+  var paragraphs = [];
+  var m;
+  while ((m = blockRe.exec(s)) !== null) {
+    var t = htmlText(m[2]);
+    if (!t) continue;
+    var lines = t.split('\n');
+    var cleanedLines = [];
+    for (var i = 0; i < lines.length; i++) {
+      cleanedLines.push(lines[i].replace(/[ \t]+/g, ' ').trim());
+    }
+    var clean = cleanedLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (clean) paragraphs.push(clean);
+  }
+  if (paragraphs.length === 0) {
+    return htmlText(s);
+  }
+  return paragraphs.join('\n\n');
 }
 
 /**
