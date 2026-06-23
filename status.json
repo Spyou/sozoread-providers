@@ -1,69 +1,70 @@
 {
-  "generatedAt": "2026-06-22T20:48:52.315Z",
+  "generatedAt": "2026-06-23T03:36:33.151Z",
   "runner": "github-actions",
   "sources": {
     "freewebnovel": {
       "status": "ok",
-      "latencyMs": 1731,
-      "lastOkAt": "2026-06-22T20:48:41.250Z",
-      "lastCheckedAt": "2026-06-22T20:48:41.250Z",
+      "latencyMs": 1394,
+      "lastOkAt": "2026-06-23T03:36:24.694Z",
+      "lastCheckedAt": "2026-06-23T03:36:24.694Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "mangakakalot": {
       "status": "ok",
-      "latencyMs": 1872,
-      "lastOkAt": "2026-06-22T20:48:42.982Z",
-      "lastCheckedAt": "2026-06-22T20:48:42.982Z",
+      "latencyMs": 1536,
+      "lastOkAt": "2026-06-23T03:36:26.090Z",
+      "lastCheckedAt": "2026-06-23T03:36:26.090Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "mangakatana": {
       "status": "ok",
-      "latencyMs": 1464,
-      "lastOkAt": "2026-06-22T20:48:44.855Z",
-      "lastCheckedAt": "2026-06-22T20:48:44.855Z",
+      "latencyMs": 1259,
+      "lastOkAt": "2026-06-23T03:36:27.626Z",
+      "lastCheckedAt": "2026-06-23T03:36:27.626Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "mangapill": {
       "status": "ok",
-      "latencyMs": 747,
-      "lastOkAt": "2026-06-22T20:48:46.319Z",
-      "lastCheckedAt": "2026-06-22T20:48:46.319Z",
+      "latencyMs": 401,
+      "lastOkAt": "2026-06-23T03:36:28.886Z",
+      "lastCheckedAt": "2026-06-23T03:36:28.886Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "novelbin": {
       "status": "ok",
-      "latencyMs": 2233,
-      "lastOkAt": "2026-06-22T20:48:47.067Z",
-      "lastCheckedAt": "2026-06-22T20:48:47.067Z",
+      "latencyMs": 2071,
+      "lastOkAt": "2026-06-23T03:36:29.289Z",
+      "lastCheckedAt": "2026-06-23T03:36:29.289Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.0",
       "reportedVersion": "1.0.0"
     },
     "weebcentral": {
       "status": "ok",
-      "latencyMs": 1688,
-      "lastOkAt": "2026-06-22T20:48:49.301Z",
-      "lastCheckedAt": "2026-06-22T20:48:49.301Z",
+      "latencyMs": 1328,
+      "lastOkAt": "2026-06-23T03:36:31.360Z",
+      "lastCheckedAt": "2026-06-23T03:36:31.360Z",
       "consecutiveFailures": 0,
       "manifestVersion": "1.0.3",
       "reportedVersion": "1.0.3"
     },
     "gutenberg": {
-      "status": "ok",
-      "latencyMs": 1324,
+      "status": "broken-unknown",
+      "latencyMs": 459,
       "lastOkAt": "2026-06-22T20:48:50.990Z",
-      "lastCheckedAt": "2026-06-22T20:48:50.990Z",
-      "consecutiveFailures": 0,
+      "lastCheckedAt": "2026-06-23T03:36:32.690Z",
+      "consecutiveFailures": 1,
       "manifestVersion": "1.0.2",
-      "reportedVersion": "1.0.2"
+      "reportedVersion": "1.0.2",
+      "error": "search: fetch failed"
     }
   }
 }
